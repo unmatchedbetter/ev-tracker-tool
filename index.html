@@ -1,130 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Football Odds Comparison</title>
+  <meta charset="UTF-8">
+  <title>Football Odds Matcher</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      text-align: center;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      margin-top: 20px;
-    }
-
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-
-    th {
-      background: #333;
-      color: white;
-    }
-
-    .highlight {
-      background-color: #eaffea;
-    }
-
-    .loading {
-      text-align: center;
-      font-weight: bold;
+    body { font-family: sans-serif; margin:1em; background:#f8f9fa; }
+    h1 { text-align:center; margin-bottom:0.5em; }
+    .controls { text-align:center; margin-bottom:1em; }
+    .controls input { width:80px; padding:0.3em; margin-right:0.5em; }
+    .btn { background:#007bff; color:#fff; border:none; padding:0.5em 1em; cursor:pointer; border-radius:4px; }
+    .btn:hover { background:#0056b3; }
+    table { width:100%; border-collapse:collapse; background:#fff; }
+    th,td { padding:0.6em; text-align:center; border:1px solid #dee2e6; }
+    th { background:#343a40; color:#fff; }
+    tr.good { background-color:#d4edda; }
+    tr.bad { background-color:#f8d7da; }
+    @media screen and (max-width:600px){
+      table, thead, tbody, tr, th, td { font-size:0.8em; }
+      .controls { display:flex; flex-wrap:wrap; justify-content:center; }
     }
   </style>
 </head>
 <body>
-  <h1>Football Odds Comparison (2.0 Target)</h1>
-  <div class="loading" id="loading">Fetching odds...</div>
-  <table id="odds-table" style="display:none;">
+  <h1>Football Odds Matcher</h1>
+
+  <div class="controls">
+    <label>Target Odd:
+      <input type="number" id="targetOdd" step="0.01" placeholder="2.00" value="2.00">
+    </label>
+    <label>± Range:
+      <input type="number" id="oddRange" step="0.01" placeholder="0.05" value="0.05">
+    </label>
+    <button class="btn" onclick="fetchOdds()">Search</button>
+  </div>
+
+  <table id="odds-table">
     <thead>
       <tr>
-        <th>Match</th>
-        <th>Bookmaker</th>
-        <th>Market</th>
-        <th>Back Odds</th>
-        <th>Smarkets Lay Odds</th>
+        <th>Match</th><th>Bookie</th><th>Outcome</th><th>Back Odds</th>
+        <th>Lay Odds (You Input)</th><th>EV (%)</th>
       </tr>
     </thead>
-    <tbody id="odds-body"></tbody>
+    <tbody id="odds-body"><tr><td colspan="6">Click “Search” to load.</td></tr></tbody>
   </table>
 
   <script>
-    const API_KEY = '7063cef5a5dccafa3a0d4ddc90f7463b';
+    const API_KEY = "7063cef5a5dccafa3a0d4ddc90f7463b";
 
     async function fetchOdds() {
-      const url = `https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?regions=uk&markets=h2h&apiKey=${API_KEY}`;
+      const target = parseFloat(document.getElementById("targetOdd").value);
+      const range = parseFloat(document.getElementById("oddRange").value);
 
+      const tbody = document.getElementById("odds-body");
+      tbody.innerHTML = "<tr><td colspan='6'>Loading...</td></tr>";
+
+      const url = `https://api.the-odds-api.com/v4/sports/soccer/odds/?regions=uk&markets=h2h&apiKey=${API_KEY}`;
       try {
-        const res = await fetch(url);
-        const data = await res.json();
-
-        const tbody = document.getElementById('odds-body');
-        const table = document.getElementById('odds-table');
-        const loading = document.getElementById('loading');
-        loading.style.display = 'none';
-        table.style.display = 'table';
+        const data = await (await fetch(url)).json();
+        tbody.innerHTML = "";
+        let found = 0;
 
         data.forEach(game => {
-          const match = `${game.home_team} vs ${game.away_team}`;
-          game.bookmakers.forEach(book => {
-            book.markets.forEach(market => {
-              market.outcomes.forEach(outcome => {
-                if (outcome.price >= 1.9 && outcome.price <= 2.1) {
-                  const tr = document.createElement('tr');
-                  tr.className = 'highlight';
-                  tr.innerHTML = `
-                    <td>${match}</td>
-                    <td>${book.title}</td>
-                    <td>${outcome.name}</td>
-                    <td>${outcome.price}</td>
-                    <td>${getMockSmarketsOdds(outcome.name)}</td>
+          const matchName = `${game.home_team} vs ${game.away_team}`;
+          game.bookmakers.forEach(bk => {
+            bk.markets.forEach(mkt => {
+              mkt.outcomes.forEach(o => {
+                if (Math.abs(o.price - target) <= range) {
+                  found++;
+                  const row = document.createElement("tr");
+                  row.innerHTML = `
+                    <td>${matchName}</td>
+                    <td>${bk.title}</td>
+                    <td>${o.name}</td>
+                    <td>${o.price.toFixed(2)}</td>
+                    <td><input type="number" step="0.01" onchange="calcEV(this)" data-back="${o.price}"></td>
+                    <td class="ev">-</td>
                   `;
-                  tbody.appendChild(tr);
+                  tbody.appendChild(row);
                 }
               });
             });
           });
         });
 
-      } catch (error) {
-        document.getElementById('loading').textContent = "Failed to load odds.";
-        console.error('Error fetching odds:', error);
+        if (!found) tbody.innerHTML = "<tr><td colspan='6'>No matches found in that range.</td></tr>";
+      } catch(err) {
+        console.error(err);
+        tbody.innerHTML = "<tr><td colspan='6'>Error loading odds. Try again.</td></tr>";
       }
     }
 
-    // Placeholder Smarkets lay odds (real API needs token auth)
-    function getMockSmarketsOdds(market) {
-      const base = { "Home": 2.04, "Draw": 3.4, "Away": 2.1 };
-      return base[market] || "—";
+    function calcEV(input) {
+      const tr = input.closest("tr");
+      const back = parseFloat(input.dataset.back);
+      const lay = parseFloat(input.value);
+      if (!lay || lay <= 1) {
+        tr.querySelector(".ev").textContent = "-";
+        tr.classList.remove("good","bad");
+        return;
+      }
+
+      const stake = 10;
+      const backProfit = (back - 1) * stake;
+      const layLiab = (lay - 1) * stake;
+      const evAmt = (stake - backProfit) - layLiab;
+      const evPct = (evAmt / stake) * 100;
+
+      const evCell = tr.querySelector(".ev");
+      evCell.textContent = evPct.toFixed(2) + "%";
+      tr.classList.remove("good","bad");
+      if (evPct > 0) tr.classList.add("good");
+      else if (evPct < -5) tr.classList.add("bad");
     }
-
-    fetchOdds();
   </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Odds Comparison Tool</title>
-</head>
-<body>
-  <h1>Welcome to My Odds Comparison Tool</h1>
-
-  <!-- 🟢 Paste the full odds filter code snippet right here -->
-
 </body>
 </html>
