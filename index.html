@@ -1,18 +1,116 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Odds Finder Tool</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Football Odds Comparison</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #333;
+      color: white;
+    }
+
+    .highlight {
+      background-color: #eaffea;
+    }
+
+    .loading {
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Odds Finder</h1>
-    <label for="targetOdds">Enter target odds:</label>
-    <input type="number" id="targetOdds" step="0.01" placeholder="e.g. 2.0">
-    <button onclick="fetchOdds()">Search</button>
-    <div id="results"></div>
-  </div>
-  <script src="script.js"></script>
+  <h1>Football Odds Comparison (2.0 Target)</h1>
+  <div class="loading" id="loading">Fetching odds...</div>
+  <table id="odds-table" style="display:none;">
+    <thead>
+      <tr>
+        <th>Match</th>
+        <th>Bookmaker</th>
+        <th>Market</th>
+        <th>Back Odds</th>
+        <th>Smarkets Lay Odds</th>
+      </tr>
+    </thead>
+    <tbody id="odds-body"></tbody>
+  </table>
+
+  <script>
+    const API_KEY = '7063cef5a5dccafa3a0d4ddc90f7463b';
+
+    async function fetchOdds() {
+      const url = `https://api.the-odds-api.com/v4/sports/soccer_epl/odds/?regions=uk&markets=h2h&apiKey=${API_KEY}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const tbody = document.getElementById('odds-body');
+        const table = document.getElementById('odds-table');
+        const loading = document.getElementById('loading');
+        loading.style.display = 'none';
+        table.style.display = 'table';
+
+        data.forEach(game => {
+          const match = `${game.home_team} vs ${game.away_team}`;
+          game.bookmakers.forEach(book => {
+            book.markets.forEach(market => {
+              market.outcomes.forEach(outcome => {
+                if (outcome.price >= 1.9 && outcome.price <= 2.1) {
+                  const tr = document.createElement('tr');
+                  tr.className = 'highlight';
+                  tr.innerHTML = `
+                    <td>${match}</td>
+                    <td>${book.title}</td>
+                    <td>${outcome.name}</td>
+                    <td>${outcome.price}</td>
+                    <td>${getMockSmarketsOdds(outcome.name)}</td>
+                  `;
+                  tbody.appendChild(tr);
+                }
+              });
+            });
+          });
+        });
+
+      } catch (error) {
+        document.getElementById('loading').textContent = "Failed to load odds.";
+        console.error('Error fetching odds:', error);
+      }
+    }
+
+    // Placeholder Smarkets lay odds (real API needs token auth)
+    function getMockSmarketsOdds(market) {
+      const base = { "Home": 2.04, "Draw": 3.4, "Away": 2.1 };
+      return base[market] || "—";
+    }
+
+    fetchOdds();
+  </script>
 </body>
 </html>
