@@ -1,105 +1,18 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Odds Comparison Tool</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 2rem;
-    }
-    h1 {
-      text-align: center;
-    }
-    .calculator {
-      max-width: 500px;
-      margin: 2rem auto;
-      background: white;
-      padding: 1.5rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 1rem;
-    }
-    input {
-      width: 100%;
-      padding: 0.5rem;
-      margin-top: 0.25rem;
-    }
-    button {
-      margin-top: 1.5rem;
-      width: 100%;
-      padding: 0.75rem;
-      background: #28a745;
-      color: white;
-      border: none;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-    .result {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      background: #e9ffe9;
-      border-left: 5px solid #28a745;
-    }
-  </style>
+  <title>Odds Finder Tool</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Odds Comparison Tool</h1>
-  <div class="calculator">
-    <label for="bookieOdds">Bookmaker Odds:</label>
-    <input type="number" id="bookieOdds" step="0.01" required />
-
-    <label for="exchangeOdds">Exchange Lay Odds:</label>
-    <input type="number" id="exchangeOdds" step="0.01" required />
-
-    <label for="exchangeCommission">Exchange Commission (%)</label>
-    <input type="number" id="exchangeCommission" step="0.01" value="2" required />
-
-    <label for="stake">Stake (£):</label>
-    <input type="number" id="stake" step="0.01" value="10" required />
-
-    <button onclick="calculateEV()">Calculate</button>
-
-    <div class="result" id="result" style="display: none;"></div>
+  <div class="container">
+    <h1>Odds Finder</h1>
+    <label for="targetOdds">Enter target odds:</label>
+    <input type="number" id="targetOdds" step="0.01" placeholder="e.g. 2.0">
+    <button onclick="fetchOdds()">Search</button>
+    <div id="results"></div>
   </div>
-
-  <script>
-    function calculateEV() {
-      const bookieOdds = parseFloat(document.getElementById('bookieOdds').value);
-      const exchangeOdds = parseFloat(document.getElementById('exchangeOdds').value);
-      const exchangeCommission = parseFloat(document.getElementById('exchangeCommission').value) / 100;
-      const stake = parseFloat(document.getElementById('stake').value);
-
-      // Payout if back bet wins
-      const backWinProfit = (bookieOdds - 1) * stake;
-
-      // Lay stake approximation to match the back stake
-      const layStake = (bookieOdds * stake) / exchangeOdds;
-
-      // Payout if lay wins (back bet loses)
-      const layProfit = layStake * (1 - exchangeCommission);
-      const layLiability = layStake * (exchangeOdds - 1);
-
-      // Expected Value
-      const probWin = 1 / bookieOdds;
-      const probLose = 1 - probWin;
-      const ev = (probWin * backWinProfit) - (probLose * layLiability);
-
-      const resultDiv = document.getElementById('result');
-      resultDiv.style.display = 'block';
-      resultDiv.innerHTML = `
-        <strong>Lay Stake:</strong> £${layStake.toFixed(2)}<br>
-        <strong>Lay Liability:</strong> £${layLiability.toFixed(2)}<br>
-        <strong>Expected Value:</strong> £${ev.toFixed(2)} (${(ev / stake * 100).toFixed(2)}%)<br>
-        ${ev > 0 ? "<strong style='color: green'>+EV Opportunity ✅</strong>" : "<strong style='color: red'>Not +EV ❌</strong>"}
-      `;
-    }
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
-
